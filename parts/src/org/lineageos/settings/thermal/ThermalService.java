@@ -17,9 +17,9 @@
 package org.lineageos.settings.thermal;
 
 import android.app.ActivityManager;
-import android.app.ActivityManager.StackInfo;
-import android.app.IActivityManager;
+import android.app.ActivityTaskManager;
 import android.app.Service;
+import android.app.TaskStackListener;
 import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
@@ -38,9 +38,24 @@ public class ThermalService extends Service {
 
     private String mPreviousApp;
     private ThermalUtils mThermalUtils;
-    private ActivityRunnable mActivityRunnable;
-    private IActivityManager mIActivityManager;
-
+    private final TaskStackListener mTaskListener = new TaskStackListener() {
+        @Override
+        public void onTaskStackChanged() {
+            try {
+                final ActivityManager.StackInfo focusedStack =
+                        ActivityTaskManager.getService().getFocusedStackInfo();
+                if (focusedStack != null && focusedStack.topActivity != null) {
+                    ComponentName taskComponentName = focusedStack.topActivity;
+                    String foregroundApp = taskComponentName.getPackageName();
+                    if (!foregroundApp.equals(mPreviousApp)) {
+                        mThermalUtils.setThermalProfile(foregroundApp);
+                        mPreviousApp = foregroundApp;
+                    }
+                }
+            } catch (Exception e) {
+            }
+        }
+    };
     private BroadcastReceiver mIntentReceiver = new BroadcastReceiver() {
         @Override
         public void onReceive(Context context, Intent intent) {
@@ -97,29 +112,5 @@ public class ThermalService extends Service {
 
     private void unregisterReceiver() {
         this.unregisterReceiver(mIntentReceiver);
-    }
-
-    private class ActivityRunnable implements Runnable {
-        private Context context;
-
-        private ActivityRunnable(Context context) {
-            this.context = context;
-        }
-
-        @Override
-        public void run() {
-            try {
-                StackInfo focusedStack = mIActivityManager.getFocusedStackInfo();
-                if (focusedStack != null && focusedStack.topActivity != null) {
-                    String foregroundApp = focusedStack.topActivity.getPackageName();
-                    if (!foregroundApp.equals(mPreviousApp)) {
-                        mThermalUtils.setThermalProfile(foregroundApp);
-                        mPreviousApp = foregroundApp;
-                    }
-                    mHandler.postDelayed(this, 5000);
-                }
-            } catch (RemoteException ignored) {
-            }
-        }
     }
 }
