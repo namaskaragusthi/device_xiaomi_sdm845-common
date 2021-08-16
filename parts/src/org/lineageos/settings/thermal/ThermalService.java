@@ -21,10 +21,10 @@ import android.app.ActivityTaskManager;
 import android.app.Service;
 import android.app.TaskStackListener;
 import android.content.BroadcastReceiver;
+import android.content.ComponentName;
 import android.content.Context;
 import android.content.Intent;
 import android.content.IntentFilter;
-import android.os.Handler;
 import android.os.IBinder;
 import android.os.RemoteException;
 import android.util.Log;
@@ -33,8 +33,6 @@ public class ThermalService extends Service {
 
     private static final String TAG = "ThermalService";
     private static final boolean DEBUG = false;
-
-    private final Handler mHandler = new Handler();
 
     private String mPreviousApp;
     private ThermalUtils mThermalUtils;
@@ -59,24 +57,20 @@ public class ThermalService extends Service {
     private BroadcastReceiver mIntentReceiver = new BroadcastReceiver() {
         @Override
         public void onReceive(Context context, Intent intent) {
-            final String action = intent.getAction();
-            if (Intent.ACTION_SCREEN_ON.equals(action)) {
-                mHandler.postDelayed(mActivityRunnable, 500);
-            } else {
-                mHandler.removeCallbacks(mActivityRunnable);
-                mPreviousApp = "";
-                mThermalUtils.setDefaultThermalProfile();
-            }
+            mPreviousApp = "";
+            mThermalUtils.setDefaultThermalProfile();
         }
     };
 
     @Override
     public void onCreate() {
         if (DEBUG) Log.d(TAG, "Creating service");
+        try {
+            ActivityTaskManager.getService().registerTaskStackListener(mTaskListener);
+        } catch (RemoteException e) {
+            // Do nothing
+        }
         mThermalUtils = new ThermalUtils(this);
-        mActivityRunnable = new ActivityRunnable(this);
-        mIActivityManager = ActivityManager.getService();
-        mHandler.postDelayed(mActivityRunnable, 500);
         registerReceiver();
         super.onCreate();
     }
@@ -85,10 +79,8 @@ public class ThermalService extends Service {
     public void onDestroy() {
         if (DEBUG) Log.d(TAG, "Destroying service");
         unregisterReceiver();
-        mHandler.removeCallbacks(mActivityRunnable);
         mThermalUtils.setDefaultThermalProfile();
         mThermalUtils = null;
-        mActivityRunnable = null;
         super.onDestroy();
     }
 
@@ -105,7 +97,6 @@ public class ThermalService extends Service {
 
     private void registerReceiver() {
         IntentFilter filter = new IntentFilter();
-        filter.addAction(Intent.ACTION_SCREEN_ON);
         filter.addAction(Intent.ACTION_SCREEN_OFF);
         filter.addAction(Intent.ACTION_SCREEN_ON);
         this.registerReceiver(mIntentReceiver, filter);
