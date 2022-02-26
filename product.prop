@@ -125,6 +125,9 @@ ro.surface_flinger.vsync_event_phase_offset_ns=2000000
 ro.surface_flinger.vsync_sf_event_phase_offset_ns=6000000
 ro.surface_flinger.has_HDR_display=true
 
+# Shutdown
+ro.build.shutdown_timeout=2
+
 # USB debugging
 persist.sys.usb.config=mtp,adb
 ro.adb.secure=0
