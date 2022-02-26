@@ -48,6 +48,9 @@ misc_link=$(ls -l /dev/block/bootdevice/by-name/misc)
 real_path=${misc_link##*>}
 setprop persist.vendor.mmi.misc_dev_path $real_path
 
+# Enable faster charging
+echo 3300000 > /sys/class/power_supply/battery/constant_charge_current_max
+
 # Enable oom_reaper
 if [ -f /sys/module/lowmemorykiller/parameters/oom_reaper ]; then
     echo 1 > /sys/module/lowmemorykiller/parameters/oom_reaper
